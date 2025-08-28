@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>IPTV Player</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; text-align: center; }
+    #channelList { list-style: none; padding: 0; margin: 20px auto; max-width: 400px; }
+    #channelList li { padding: 10px; background: #222; margin: 5px 0; cursor: pointer; border-radius: 5px; }
+    #channelList li:hover { background: #444; }
+    video { width: 80%; height: auto; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>📺 IPTV Player</h1>
+
+  <!-- Lista de canais -->
+  <ul id="channelList"></ul>
+
+  <!-- Player de vídeo -->
+  <video id="iptvPlayer" class="video-js vjs-default-skin" controls autoplay></video>
+
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
+  <script>
+    const m3uUrl = "Lista_TV.m3u"; // arquivo M3U no mesmo diretório
+
+    // Função para carregar e interpretar lista M3U
+    async function loadChannels() {
+      const response = await fetch(m3uUrl);
+      const m3uData = await response.text();
+      const lines = m3uData.split("\n");
+      const channels = [];
+      let currentChannel = null;
+
+      lines.forEach(line => {
+        if (line.startsWith("#EXTINF")) {
+          if (currentChannel) channels.push(currentChannel);
+          currentChannel = { name: line.split(",")[1], url: null };
+        } else if (line.trim() && currentChannel) {
+          currentChannel.url = line.trim();
+        }
+      });
+      if (currentChannel) channels.push(currentChannel);
+
+      // renderizar lista de canais
+      const channelList = document.getElementById("channelList");
+      channels.forEach(channel => {
+        if (!channel.url) return;
+        const li = document.createElement("li");
+        li.textContent = channel.name;
+        li.onclick = () => playChannel(channel.url);
+        channelList.appendChild(li);
+      });
+    }
+
+    // Reproduzir canal selecionado
+    function playChannel(url) {
+      const videoElement = document.getElementById("iptvPlayer");
+      const player = videojs(videoElement);
+
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(videoElement);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => player.play());
+      } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
+        videoElement.src = url;
+        player.play();
+      }
+    }
+
+    window.onload = loadChannels;
+  </script>
+</body>
+</html>
